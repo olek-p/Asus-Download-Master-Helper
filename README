@@ -1,0 +1,14 @@
+This simple tool connects to an ASUS router running the Download Master app. The features so far:
+- add a new torrent by link (magnet links accepted)
+- check the list of current downloads and remove the finished ones, plus send a
+  notification email
+- periodically check for new episodes of TV shows and add them to the download
+  list
+
+The latter two are meant to be configured in a crontab. The config options include setting the address where your Download Master is running and the email address the notifications are sent to.
+
+TODO
+- as the whole thing is just a simple tool I wrote to save me some headaches, I
+  would need to make it more user-friendly and configurable, as I imagine not everybody follows the same TV shows as me
+- it's also not very idiot-proof; some sanity checks here and there would be
+  nice
