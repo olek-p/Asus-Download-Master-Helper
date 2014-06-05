@@ -1,12 +1,14 @@
 #Description
-This simple tool connects to an ASUS router running the Download Master app. The features so far:
+This simple PHP tool connects to an ASUS router running the Download Master app. The features so far:
 * add a new torrent by link (magnet links accepted) (get.php)
 * check the list of current downloads and remove the finished ones, plus send a notification email (checkDone.php)
 * check for new episodes of TV shows (using showrss.info) and add them to the download list (checkNew.php)
 * get different levels of debug info by using parameters to checkNew.php and checkDone.php: none (default), info (use the "-d" param) and verbose ("-v")
 
 #Requirements
-You need to have a machine with an access to your ASUS router. The machine has to have PHP 5 installed along with SimpleXML. In order to check for new episodes of the shows it needs to have access to the Internet (duh).
+Well, you need an ASUS router with the Download Master installed.
+
+You also need to have a machine with an access to your ASUS router. The machine has to have PHP 5 installed along with SimpleXML. In order to check for new episodes of the shows it needs to have access to the Internet (duh).
 
 #Installation
 In order to make the whole thing work, edit the Config.php file filling in your:
