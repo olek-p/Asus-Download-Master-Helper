@@ -1,7 +1,10 @@
 <?php
 
+require_once 'Debug.php';
 require_once 'Downloader.php';
 
-$dl = Downloader::getInstance('10.0.0.1:8081', 'aleksander.piekarz+torrent@gmail.com');
-$dl->getList();
+Debug::init($argc > 1);
+
+$dl = new Downloader();
+$dl->checkActiveList();
 

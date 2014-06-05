@@ -1,25 +1,25 @@
 <?php
 
+require_once 'Config.php';
+
 class Downloader {
 
-	private static $instances = array();
-	private $dmIp = NULL;
-	private $email = NULL;
+	private $dmIp = null;
+	private $email = null;
+	private $authKey = null;
 
-	private function __construct($ip, $email) {
-		$this->dmIp = $ip;
-		$this->email = $email;
-	}
-
-	public static function getInstance($ip, $email) {
-		if (!isset(static::$instances[$ip])) {
-			static::$instances[$ip] = new static($ip, $email);
+	public function __construct() {
+		$config = Config::get();
+		if (!isset($config[Config::IP], $config[Config::EMAIL], $config[Config::AUTH_KEY])) {
+			throw new Exception("Missing config items!");
 		}
-		return static::$instances[$ip];
+		$this->dmIp = $config[Config::IP];
+		$this->email = $config[Config::EMAIL];
+		$this->authKey = $config[Config::AUTH_KEY];
 	}
 
-	public function add($torrent) {
-		$command = 'http://'.$this->dmIp.'/downloadmaster/dm_apply.cgi?'.
+	public function addTorrent($torrent) {
+		$command = 'dm_apply.cgi?'.
 			http_build_query(array(
 				'action_mode' => 'DM_ADD',
 				'download_type' => 5,
@@ -29,16 +29,16 @@ class Downloader {
 			));
 		$result = $this->execCommand($command);
 
-		if ($result == 'ACK_SUCESS') {
-			return TRUE;
+		if ($result == 'ACK_SUCESS') { // sic!
+			return true;
 		} else if ($result == 'BT_EXISTS') {
-			return FALSE;
+			return false;
 		}
 		throw new Exception("Unknown add result: $result");
 	}
 
-	public function getList() {
-		$command = 'http://'.$this->dmIp.'/downloadmaster/dm_print_status.cgi?'.
+	public function checkActiveList() {
+		$command = 'dm_print_status.cgi?'.
 			http_build_query(array(
 				'action_mode' => 'All',
 				't' => $this->getRandomSignature(),
@@ -61,22 +61,29 @@ class Downloader {
 			.'"(?<path>[^"]*)"'
 			.'@', $result, $matches);
 		$itemCount = count($matches['id']);
-		for ($i = 0; $i < $itemCount; $i++) {
-			if ($matches['status'][$i] == 'Finished' || $matches['status'][$i] == 'Seeding') {
-				$subject = 'Job "'.$matches['title'][$i].'" has finished';
-				$message = $subject . '. Removing... ';
-				if ($this->deleteJob($matches['id'][$i], $matches['type'][$i])) {
-					$message .= 'OK!';
-				} else {
-					$message .= 'Not removed';
+		if ($itemCount) {
+			for ($i = 0; $i < $itemCount; $i++) {
+				if ($matches['status'][$i] == 'Finished' || $matches['status'][$i] == 'Seeding') {
+					$subject = 'Job "'.$matches['title'][$i].'" has finished';
+					$message = $subject . '. Removing... ';
+					if ($this->deleteJob($matches['id'][$i], $matches['type'][$i])) {
+						$message .= 'OK!';
+					} else {
+						$message .= 'Not removed';
+					}
+					if ($this->email) {
+						mail($this->email, $subject, $message);
+					}
+					Debug::info($message);
 				}
-				mail($this->email, $subject, $message);
 			}
+		} else {
+			Debug::info('No active jobs');
 		}
 	}
 
 	private function deleteJob($jobId, $type) {
-		$command = 'http://'.$this->dmIp.'/downloadmaster/dm_apply.cgi?'.
+		$command = 'dm_apply.cgi?'.
 			http_build_query(array(
 				'action_mode' => 'DM_CTRL',
 				'dm_ctrl' => 'cancel',
@@ -98,13 +105,20 @@ class Downloader {
 	}
 
 	private function execCommand($command) {
+		$command = "http://{$this->dmIp}:8081/downloadmaster/$command";
+		Debug::verbose("Calling command $command");
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $command);
 		curl_setopt($ch, CURLOPT_HEADER, 0);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
-		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Authorization: Basic YWRtaW46QWRtaW4='));
+		curl_setopt($ch, CURLOPT_HTTPHEADER, array("Authorization: Basic {$this->authKey}"));
+
 		$result = curl_exec($ch);
+		$error = curl_error($ch);
+		Debug::verbose("Got response... ".($result ? '' : '(empty) '.($error ? 'ERROR: '.$error : '')));
+
 		curl_close($ch);
+
 		return $result;
 	}
 }
